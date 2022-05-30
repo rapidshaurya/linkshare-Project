@@ -1,6 +1,6 @@
 # linkshare-Project #
 ## Description ##
-In this project, you can create your account and then you can you links.
+linkshare is a social site where user can share his recommended links to anyone. Here you can create your account and then you can share and manage different project links, youtube links, music playlist, google doc links, important website links etc.
 
 For example:
  ### My Youtube list1 : ###
@@ -9,6 +9,10 @@ For example:
  ### My music list: ####
  - link 1
  - link 2
+ ### My doc list: ####
+ - link 1
+ - link 2
+ etc.
 ## HOME PAGE ##
  ### User Login ###
  Here you can login to your account or you can create a new account
