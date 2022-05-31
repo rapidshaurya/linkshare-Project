@@ -1,22 +1,11 @@
-# linkshare-Project #
+# Linkshare-Project #
 ## Description ##
-linkshare is a social site where user can share his recommended links to anyone. Here you can create your account and then you can share and manage different project links, youtube links, music playlist, google doc links, important website links etc.
+Linkshare is a social site where users can share some recommended links with anyone. You can create an account here and then share and manage various project links, YouTube links, music playlists, Google Doc links, important website links, and so on.
 
-For example:
- ### My Youtube list1 : ###
- - link1
- - link2
- ### My music list: ####
- - link 1
- - link 2
- ### My doc list: ####
- - link 1
- - link 2
- etc.
 ## HOME PAGE ##
  ### User Login ###
  Here you can login to your account or you can create a new account
- ### Search Button ###
+ ### Search ###
  Here you can seach any user linkshare links using his nickname.
 ## Documentation ##
 I am using mainly 2 database to store data.
@@ -28,4 +17,4 @@ After login to linkshare you can add, delete update your account.
 2. Any one can search anybody's shared links by using nickname.
 3. User can add new links, delete or update links.
 ## Future Scope ##
-Nowadays many youtubers/companies/groups share number of links to there audience/employee/members, here they can easily manage there links.
+Nowadays, many youtubers/companies/groups share a number of links with their audience, employees, or members. Here they can easily manage their links.
