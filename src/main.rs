@@ -46,7 +46,7 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     
-    let  client_options = ClientOptions::parse("mongodb+srv://rapidshaurya:12345@cluster0.do1yg.mongodb.net/?retryWrites=true&w=majority").await.expect("fail to connect tp the server");
+    let  client_options = ClientOptions::parse("mongodb+srv://{name}:<password>@cluster0.do1yg.mongodb.net/?retryWrites=true&w=majority").await.expect("fail to connect tp the server");
     let client = Client::with_options(client_options).expect("failed to handle the database");
      
     create_username_index(&client).await;
