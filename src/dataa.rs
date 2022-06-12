@@ -1,8 +1,8 @@
 use actix_web::{get, web, HttpResponse};
-use mongodb::{bson::doc, Client, Collection, IndexModel};
+use mongodb::{bson::doc, bson::from_document, Client, Collection, IndexModel};
 use serde::{Deserialize, Serialize};
 use actix_identity::{Identity};
-
+use futures::stream::TryStream;
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Content {
     pub username: String,
@@ -40,9 +40,13 @@ pub async  fn get_data(client: web::Data<Client>, username: web::Path<String>) -
     let username = username.into_inner();
     let vs=true;
     let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
-    let cursor = collection
-        .find(doc! { "username": &username, "visibility": vs}, None)
+    let mut cursor = collection
+        .find(None, None)
         .await;
+
+    while let Some(book) = cursor.try_next().await {
+        println!("{}", book.content_type);
+    }
     HttpResponse::Ok().body(format!("Result "))
     
 }
