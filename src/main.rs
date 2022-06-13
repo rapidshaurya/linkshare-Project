@@ -1,6 +1,9 @@
 use actix_web::{get, web, App, HttpServer, HttpResponse, services};
 use mongodb::{ bson::doc,Client, options::ClientOptions, Collection};
 use actix_identity::{ Identity, CookieIdentityPolicy, IdentityService};
+use std::process;
+use futures::TryStreamExt;
+
 mod login;
 mod userdata;
 mod dataa;
@@ -27,14 +30,16 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
                 .find_one(doc! { "my_username": &view, "friend_username":&user}, None)
                 .await
                 {
-                 Ok(Some(_user)) =>    { match collection3
-                                        .find_one(doc! { "username": &view }, None)
-                                        .await
-                                        {
-                                            Ok(Some(data)) => HttpResponse::Ok().json(data),
-                                            Ok(None) => {HttpResponse::NotFound().body(format!("No Content")) },
-                                            Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-                                        } },
+                 Ok(Some(_user)) =>    { let cur = collection3
+                                        .find(doc! { "username": &view }, None)
+                                        .await;
+                                        let cursor = match cur { //cursor: Cursor<Document>
+                                            Ok(x) => x,
+                                            Err(_) => process::exit(1)
+                                        };
+                                       let doc = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
+                                       HttpResponse::Ok().body(format!("Result {:?}", doc))
+                                         },
                 Ok(None) => {HttpResponse::NotFound().body(format!("No Content available ")) },
                 Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
                  }

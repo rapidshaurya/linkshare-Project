@@ -1,16 +1,18 @@
 use actix_web::{get, web, HttpResponse};
 use mongodb::{bson::doc, Client, Collection, IndexModel};
 use serde::{Deserialize, Serialize};
-use actix_identity::{Identity};
-use futures::{TryStreamExt};
-use std::{ process};
+use actix_identity::Identity;
+use futures::TryStreamExt;
+use std::process;
+use chrono::prelude::*;
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Content {
     pub username: String,
     pub content_type: String,
     pub description: String,
     pub links: String,
-    pub visibility: bool                    // for public visibility value is true else it's value is false
+    pub visibility: bool,                    // for public visibility value is true else it's value is false
+    pub when: String
 }
 
 const DB_NAME: &str = "linkshare";
@@ -18,10 +20,10 @@ const COLL_NAME: &str = "link";
 
 // Adds a new user to the "users" collection in the database.
 #[get("/home/add")]
-pub async fn add_data(id: Identity, client: web::Data<Client>, form: web::Form<Content>) -> HttpResponse {
+pub async fn add_data(id: Identity, client: web::Data<Client>, mut form: web::Form<Content>) -> HttpResponse {
 
     if let Some(_id) = id.identity() {
-        
+        form.when =  Utc::now().to_string();
 
       let collection = client.database(DB_NAME).collection(COLL_NAME);
       let result = collection.insert_one(form.into_inner(), None).await;
@@ -63,7 +65,8 @@ pub async fn update_data(id: Identity, client: web::Data<Client>, form: web::For
       let deleted =collection
                                         .update_one(doc! { "username": &form.username, "description": &form.description  },
                                          doc!{ "$set":{
-                                            "link": &form.links
+                                            "link": &form.links,
+                                            "when":  Utc::now().to_string()
                                                     }
                                         } , None)
                                         .await;
