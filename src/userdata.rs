@@ -1,13 +1,16 @@
 use actix_web::{get, post, web, HttpResponse};
 use mongodb::{bson::doc, options::IndexOptions, Client, Collection, IndexModel};
 use serde::{Deserialize, Serialize};
+use base64::encode;
 use actix_identity::{Identity};
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+use chrono::prelude::*;
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize,)]
 pub struct User {
     pub first_name: String,
     pub last_name: String,
     pub username: String,
     pub password: String,
+    pub  when : String
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,7 +30,9 @@ const COLL_NAME2: &str = "access";
 
 // Adds a new user to the "users" collection in the database.
 #[post("/signup")]
-pub async fn signup(client: web::Data<Client>, form: web::Form<User>) -> HttpResponse {
+pub async fn signup(client: web::Data<Client>, mut form: web::Form<User>) -> HttpResponse {
+    form.when =  Utc::now().to_string();
+    form.password=encode(&form.password);
     let collection = client.database(DB_NAME).collection(COLL_NAME1);
     let result = collection.insert_one(form.into_inner(), None).await;
     match result {
@@ -40,8 +45,7 @@ pub async fn signup(client: web::Data<Client>, form: web::Form<User>) -> HttpRes
 #[post("/signin")]
 pub async  fn signin(id: Identity, client: web::Data<Client>, form: web::Form<Info>) -> HttpResponse {
     let username = form.username.to_string();
-    let password = form.password.to_string();
-
+    let password = encode(form.password.to_string());
 
     let collection: Collection<User> = client.database(DB_NAME).collection(COLL_NAME1);
     let ans = collection

@@ -10,6 +10,7 @@ pub use userdata::*;
 pub use dataa::*;
 
 const DB_NAME: &str = "linkshare";
+const COLL_NAME1: &str = "user";
 const COLL_NAME2: &str = "access";
 const COLL_NAME3: &str = "link";
 
@@ -42,6 +43,40 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
         HttpResponse::Ok().body("Go to signin page")
     }
 }
+#[get("/Home/delete/{ans}/{username}")]
+pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Path<(String, String)>)  -> HttpResponse {
+    if let Some(_id) = id.identity() {
+        let (ans, user) = path.into_inner();
+        if ans == "Yes" {
+            let collection1: Collection<Access> = client.database(DB_NAME).collection(COLL_NAME1);
+            let collection2: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME2);
+            let collection3: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME3);
+            let deleted1 =collection1
+                                        .delete_one(doc! { "username": &user  }, None)
+                                        .await;
+        println!("{:?}", deleted1);
+            let deleted3 =collection3
+                                        .delete_many(doc! { "username": &user  }, None)
+                                        .await;
+            println!("{:?}", deleted3);
+            
+            let deleted2 =collection2
+                                        .delete_many(doc! { "my_username": &user  }, None)
+                                        .await;
+            println!("{:?}", deleted2);
+            id.forget();
+            HttpResponse::Ok().body("Account Deleted")
+        }
+        else {
+            HttpResponse::Ok().body("Permission Resquired")
+        }
+        
+    }
+    else{
+        HttpResponse::Ok().body("Suceessfully")
+    }
+    
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -60,7 +95,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(client.clone()))
             .wrap(IdentityService::new(policy))
             .route("/", web::get().to(login_form))
-            .service(services![signin, add_data, logout, prv_data, access_prv_data])
+            .service(services![signin, add_data, logout, prv_data, access_prv_data, deleteuser, add_delete, update_data])
             .service(signup)
             .service(get_data)
     })
