@@ -29,10 +29,22 @@ pub async fn add_data(id: Identity, client: web::Data<Client>, mut form: web::Fo
         form.username=id;
         form.when =  Utc::now().to_string();
 
-      let collection = client.database(DB_NAME).collection(COLL_NAME);
-      let result = collection.insert_one(form.into_inner(), None).await;
+      let collection:Collection<Content>  = client.database(DB_NAME).collection(COLL_NAME);
+      let result = collection
+                     .find_one(
+                        doc! {
+                             "username": &form.username,
+                             "description": &form.description,
+                             "content_type": &form.content_type }, None).await;
     match result {
-        Ok(_) => HttpResponse::Ok().body("Data added Successfully!!!!!!"),
+        Ok(Some(_user)) => HttpResponse::Ok().body("Data Already added Successfully!!!!!!"),
+        Ok(None) => {
+                      let result = collection.insert_one(form.into_inner(), None).await;
+                       match result {
+                      Ok(_) => HttpResponse::Ok().body("Data added Successfully!!!!!!"),
+                      Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+                           }
+                    },
         Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
         }
     }
@@ -80,7 +92,7 @@ pub async fn delete_one_doc(id: Identity, client: web::Data<Client>, mut form: w
                                                 HttpResponse::Found().body(format!("Deleted Data is\n {:#?}",user)) 
                                             } 
                                             Ok(None) => {
-                                                HttpResponse::NotFound().body(format!("Invalid username or password"))
+                                                HttpResponse::NotFound().body(format!("No Content Available"))
                                             }
                                             Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
                                         }
