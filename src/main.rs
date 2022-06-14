@@ -1,4 +1,4 @@
-use actix_web::{get, web, App, HttpServer, HttpResponse, services};
+use actix_web::{get, post, web, App, HttpServer, HttpResponse, services};
 use mongodb::{ bson::doc,Client, options::ClientOptions, Collection};
 use actix_identity::{ Identity, CookieIdentityPolicy, IdentityService};
 use std::process;
@@ -23,7 +23,6 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
     if let Some(_id) = id.identity() {
         
      let (user, view) = path.into_inner();
-     println!("hi");
      let collection2: Collection<Access> = client.database(DB_NAME).collection(COLL_NAME2);
      let collection3: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME3);
      match collection2
@@ -50,7 +49,7 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
 }
 
 //this route is used to delete user and all data of user stored in collections
-#[get("/Home/delete/{ans}/{username}")]
+#[post("/Home/delete/{ans}/{username}")]
 pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Path<(String, String)>)  -> HttpResponse {
     if let Some(_id) = id.identity() {
         let (ans, user) = path.into_inner();
@@ -96,7 +95,7 @@ async fn main() -> std::io::Result<()> {
     //used for indexing
     create_username_index(&client).await;
     create_username_index_in_data(&client).await;
-
+    create_friendname_index(&client).await;
     HttpServer::new(move || {
         let policy = CookieIdentityPolicy::new(&[0; 32])
         .name("auth-cookie")

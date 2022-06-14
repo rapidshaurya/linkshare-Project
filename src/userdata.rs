@@ -80,15 +80,31 @@ async fn logout(id: Identity) -> HttpResponse {
 
 // Creates an index on the "username" field to force the values to be unique.
 pub async fn create_username_index(client: &Client) {
-    let options = IndexOptions::builder().unique(true).build();
-    let model = IndexModel::builder()
+    let options1 = IndexOptions::builder().unique(true).build();
+    
+    let model1 = IndexModel::builder()
         .keys(doc! { "username": 1 })
-        .options(options)
+        .options(options1)
         .build();
     client
         .database(DB_NAME)
         .collection::<User>(COLL_NAME1)
-        .create_index(model, None)
+        .create_index(model1, None)
+        .await
+        .expect("creating an index should succeed");
+    
+}
+
+pub async fn create_friendname_index(client: &Client) {
+    let options2 = IndexOptions::builder().unique(true).build();
+    let model2 = IndexModel::builder()
+        .keys(doc! { "friend_username": 1 })
+        .options(options2)
+        .build();
+    client
+        .database(DB_NAME)
+        .collection::<User>(COLL_NAME2)
+        .create_index(model2, None)
         .await
         .expect("creating an index should succeed");
 }

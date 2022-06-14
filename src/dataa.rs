@@ -60,7 +60,7 @@ pub async fn delete_all_doc(id: Identity, client: web::Data<Client>, username: w
     
 }
 // Delete only one doc which is stored by user in "link" collection on the basis of username, description, and content type
-#[get("/home/deleteonedoc/{username}")]
+#[get("/home/deleteonedoc")]
 pub async fn delete_one_doc(id: Identity, client: web::Data<Client>, form: web::Form<Content>) -> HttpResponse {
 
     if let Some(_id) = id.identity() {
@@ -93,7 +93,7 @@ pub async fn update_data(id: Identity, client: web::Data<Client>, form: web::For
       let deleted =collection
                                         .update_one(doc! { "username": &form.username,"content_type": &form.content_type ,"description": &form.description  },
                                          doc!{ "$set":{
-                                            "link": &form.links,
+                                            "links": &form.links,
                                             "when":  Utc::now().to_string()
                                                     }
                                         } , None)
