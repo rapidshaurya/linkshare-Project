@@ -18,11 +18,11 @@ const COLL_NAME2: &str = "access";
 const COLL_NAME3: &str = "link";
 
 // this route is used to view private link of user(who have access to view private links)
-#[get("/Home/{user}/{view}")]
-pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web::Path<(String, String)>) -> HttpResponse {
-    if let Some(_id) = id.identity() {
-        
-     let (user, view) = path.into_inner();
+#[get("/Home/{user}")]
+pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web::Path<String>) -> HttpResponse {
+    if let Some(id) = id.identity() {
+     let view =id;   
+     let user = path.into_inner();
      let collection2: Collection<Access> = client.database(DB_NAME).collection(COLL_NAME2);
      let collection3: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME3);
      match collection2
@@ -49,10 +49,11 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
 }
 
 //this route is used to delete user and all data of user stored in collections
-#[post("/Home/delete/{ans}/{username}")]
-pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Path<(String, String)>)  -> HttpResponse {
+#[post("/Home/delete/{ans}")]
+pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Path<String>)  -> HttpResponse {
     if let Some(_id) = id.identity() {
-        let (ans, user) = path.into_inner();
+        let user=_id;
+        let ans = path.into_inner();
         if ans == "Yes" {
             let collection1: Collection<Access> = client.database(DB_NAME).collection(COLL_NAME1);
             let collection2: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME2);
@@ -75,6 +76,7 @@ pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Pat
             HttpResponse::Ok().body("Account Deleted")
         }
         else {
+            id.forget();
             HttpResponse::Ok().body("Permission Resquired")
         }
         

@@ -25,7 +25,8 @@ const COLL_NAME: &str = "link";
 #[get("/home/add")]
 pub async fn add_data(id: Identity, client: web::Data<Client>, mut form: web::Form<Content>) -> HttpResponse {
 
-    if let Some(_id) = id.identity() {
+    if let Some(id) = id.identity() {
+        form.username=id;
         form.when =  Utc::now().to_string();
 
       let collection = client.database(DB_NAME).collection(COLL_NAME);
@@ -41,15 +42,15 @@ pub async fn add_data(id: Identity, client: web::Data<Client>, mut form: web::Fo
 }
 
 // Delete all the doc which is stored by user in "link" collection
-#[get("/home/deletealldoc/{username}")]
-pub async fn delete_all_doc(id: Identity, client: web::Data<Client>, username: web::Path<String>) -> HttpResponse {
+#[get("/home/deletealldoc")]
+pub async fn delete_all_doc(id: Identity, client: web::Data<Client>) -> HttpResponse {
 
-    if let Some(_id) = id.identity() {
+    if let Some(id) = id.identity() {
         
 
       let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
       let deleted =collection
-                                        .delete_many(doc! { "username": username.into_inner()  }, None)
+                                        .delete_many(doc! { "username": id  }, None)
                                         .await;
         println!("Deleted {:#?}", deleted);
     HttpResponse::Ok().body("Deleted Suceessfully")
@@ -61,21 +62,28 @@ pub async fn delete_all_doc(id: Identity, client: web::Data<Client>, username: w
 }
 // Delete only one doc which is stored by user in "link" collection on the basis of username, description, and content type
 #[get("/home/deleteonedoc")]
-pub async fn delete_one_doc(id: Identity, client: web::Data<Client>, form: web::Form<Content>) -> HttpResponse {
+pub async fn delete_one_doc(id: Identity, client: web::Data<Client>, mut form: web::Form<Content>) -> HttpResponse {
 
-    if let Some(_id) = id.identity() {
-        
-
+    if let Some(id) = id.identity() {
+      form.username=id;
       let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
       let deleted =collection
-                                        .delete_one(doc! {
+                            .find_one_and_delete(doc! {
                                              "username": &form.username,
                                              "content_type": &form.content_type,
                                              "description": &form.description
                                               }, None)
                                         .await;
-        println!("Deleted {:#?}", deleted);
-    HttpResponse::Ok().body("Deleted Suceessfully")
+                                        match deleted
+                                        {
+                                            Ok(Some(user)) =>  { 
+                                                HttpResponse::Found().body(format!("Deleted Data is\n {:#?}",user)) 
+                                            } 
+                                            Ok(None) => {
+                                                HttpResponse::NotFound().body(format!("Invalid username or password"))
+                                            }
+                                            Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+                                        }
     }
     else {
         HttpResponse::Ok().body("Go to signin")
@@ -85,9 +93,10 @@ pub async fn delete_one_doc(id: Identity, client: web::Data<Client>, form: web::
 
 // update only one doc which is stored by user in "link" collection on the basis of username, description, and content type
 #[get("/home/update")]
-pub async fn update_data(id: Identity, client: web::Data<Client>, form: web::Form<Content>) -> HttpResponse {
+pub async fn update_data(id: Identity, client: web::Data<Client>, mut form: web::Form<Content>) -> HttpResponse {
 
-    if let Some(_id) = id.identity() {
+    if let Some(id) = id.identity() {
+        form.username=id;
 
       let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
       let deleted =collection
@@ -125,7 +134,7 @@ pub async  fn get_data(client: web::Data<Client>, username: web::Path<String>) -
             Err(_) => process::exit(1)
         };
     let doc = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
-    HttpResponse::Ok().body(format!("Result {:?}", doc))
+    HttpResponse::Ok().body(format!("Result {:#?}", doc))
     
 }
 

@@ -71,11 +71,16 @@ pub async  fn signin(id: Identity, client: web::Data<Client>, form: web::Form<In
 }
 
 // this route handles the logout part of my project
-#[post("/logout")]
+#[get("/logout")]
 async fn logout(id: Identity) -> HttpResponse {
     // remove identity
-    id.forget();
-    HttpResponse::Ok().finish()
+    if let Some(_id) = id.identity() {
+        id.forget();
+        HttpResponse::Found().body(format!("logout Successfully")) 
+    } else {
+        HttpResponse::Found().body(format!("Go to signin page")) 
+    }
+    
 }
 
 // Creates an index on the "username" field to force the values to be unique.
@@ -111,8 +116,9 @@ pub async fn create_friendname_index(client: &Client) {
 
 // this route is user to store "access" collection data 
 #[get("/Home/giveaccess")]
-pub async fn prv_data(id: Identity, client: web::Data<Client>, form: web::Form<Access>) -> HttpResponse {
-    if let Some(_id) = id.identity() {
+pub async fn prv_data(id: Identity, client: web::Data<Client>,mut form: web::Form<Access>) -> HttpResponse {
+    if let Some(id) = id.identity() {
+        form.my_username=id;
         let collection = client.database(DB_NAME).collection(COLL_NAME2);
         let result = collection.insert_one(form.into_inner(), None).await;
         match result {
