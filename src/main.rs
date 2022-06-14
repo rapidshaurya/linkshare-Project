@@ -17,7 +17,7 @@ const COLL_NAME1: &str = "user";
 const COLL_NAME2: &str = "access";
 const COLL_NAME3: &str = "link";
 
-
+// this route is used to view private link of user(who have access to view private links)
 #[get("/Home/{user}/{view}")]
 pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web::Path<(String, String)>) -> HttpResponse {
     if let Some(_id) = id.identity() {
@@ -48,6 +48,8 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
         HttpResponse::Ok().body("Go to signin page")
     }
 }
+
+//this route is used to delete user and all data of user stored in collections
 #[get("/Home/delete/{ans}/{username}")]
 pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Path<(String, String)>)  -> HttpResponse {
     if let Some(_id) = id.identity() {
@@ -59,16 +61,17 @@ pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Pat
             let deleted1 =collection1
                                         .delete_one(doc! { "username": &user  }, None)
                                         .await;
-        println!("{:?}", deleted1);
-            let deleted3 =collection3
-                                        .delete_many(doc! { "username": &user  }, None)
-                                        .await;
-            println!("{:?}", deleted3);
+            println!("{:?}", deleted1);
             
             let deleted2 =collection2
                                         .delete_many(doc! { "my_username": &user  }, None)
                                         .await;
             println!("{:?}", deleted2);
+            let deleted3 =collection3
+                                        .delete_many(doc! { "username": &user  }, None)
+                                        .await;
+            println!("{:?}", deleted3);
+            
             id.forget();
             HttpResponse::Ok().body("Account Deleted")
         }
@@ -78,17 +81,19 @@ pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Pat
         
     }
     else{
-        HttpResponse::Ok().body("Suceessfully")
+        HttpResponse::Ok().body("Go to signin page")
     }
     
 }
 
+// main function used to declare all routes and helps in establishing connection to database
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     
     let  client_options = ClientOptions::parse("mongodb+srv://rapidshaurya:12345@cluster0.do1yg.mongodb.net/?retryWrites=true&w=majority").await.expect("fail to connect tp the server");
     let client = Client::with_options(client_options).expect("failed to handle the database");
-     
+    
+    //used for indexing
     create_username_index(&client).await;
     create_username_index_in_data(&client).await;
 
@@ -100,7 +105,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(client.clone()))
             .wrap(IdentityService::new(policy))
             .route("/", web::get().to(login_form))
-            .service(services![signin, add_data, logout, prv_data, access_prv_data, deleteuser, add_delete, update_data])
+            .service(
+                services![signin, add_data, logout, prv_data,
+                 access_prv_data, deleteuser, delete_one_doc, delete_all_doc, update_data])
             .service(signup)
             .service(get_data)
     })

@@ -4,31 +4,37 @@ use serde::{Deserialize, Serialize};
 use base64::encode;
 use actix_identity::{Identity};
 use chrono::prelude::*;
+
+// using User struct to store user data in "user" collection
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize,)]
 pub struct User {
     pub first_name: String,
     pub last_name: String,
     pub username: String,
     pub password: String,
-    pub  when : String
+    pub  when : String   
 }
 
+// using Info struct to store sign username and password. 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Info {
     pub username: String,
     pub password: String
 }
+
+// using Access struct to store which user is giving access to other user, for get access of private links of user
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Access {
     pub my_username: String,
     pub friend_username: String
 }
 
+//name of some collection and database
 const DB_NAME: &str = "linkshare";
 const COLL_NAME1: &str = "user";
 const COLL_NAME2: &str = "access";
 
-// Adds a new user to the "users" collection in the database.
+// Adds a new user to the "user" collection in the database.
 #[post("/signup")]
 pub async fn signup(client: web::Data<Client>, mut form: web::Form<User>) -> HttpResponse {
     form.when =  Utc::now().to_string();
@@ -41,11 +47,11 @@ pub async fn signup(client: web::Data<Client>, mut form: web::Form<User>) -> Htt
     }
 }
 
-// Gets the user with the supplied username.
+// this routes handles login part of my project.
 #[post("/signin")]
 pub async  fn signin(id: Identity, client: web::Data<Client>, form: web::Form<Info>) -> HttpResponse {
     let username = form.username.to_string();
-    let password = encode(form.password.to_string());
+    let password = encode(form.password.to_string()); // encode function is used to encode password
 
     let collection: Collection<User> = client.database(DB_NAME).collection(COLL_NAME1);
     let ans = collection
@@ -63,18 +69,8 @@ pub async  fn signin(id: Identity, client: web::Data<Client>, form: web::Form<In
         Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     }
 }
-//not working
-#[post("/deleteuser")]
-pub async  fn delete_user(client: web::Data<Client>, info: web::Form<Info>) -> HttpResponse {
-    let username = info.username.to_string();
-    let password = info.password.to_string();
-    let collection: Collection<User> = client.database(DB_NAME).collection(COLL_NAME1);
-    let _delete = collection
-        .delete_one(doc! { "username": &username, "password":&password}, None)
-        .await;
-    HttpResponse::Ok().body(format!("Deleted"))
-}
 
+// this route handles the logout part of my project
 #[post("/logout")]
 async fn logout(id: Identity) -> HttpResponse {
     // remove identity
@@ -97,6 +93,7 @@ pub async fn create_username_index(client: &Client) {
         .expect("creating an index should succeed");
 }
 
+// this route is user to store "access" collection data 
 #[get("/Home/giveaccess")]
 pub async fn prv_data(id: Identity, client: web::Data<Client>, form: web::Form<Access>) -> HttpResponse {
     if let Some(_id) = id.identity() {

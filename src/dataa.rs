@@ -5,6 +5,8 @@ use actix_identity::Identity;
 use futures::TryStreamExt;
 use std::process;
 use chrono::prelude::*;
+
+// using Content structure to store all the links in collection
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Content {
     pub username: String,
@@ -15,10 +17,11 @@ pub struct Content {
     pub when: String
 }
 
+// name of collections
 const DB_NAME: &str = "linkshare";
 const COLL_NAME: &str = "link";
 
-// Adds a new user to the "users" collection in the database.
+// Adds data to the "link" collection in the database.
 #[get("/home/add")]
 pub async fn add_data(id: Identity, client: web::Data<Client>, mut form: web::Form<Content>) -> HttpResponse {
 
@@ -37,8 +40,9 @@ pub async fn add_data(id: Identity, client: web::Data<Client>, mut form: web::Fo
     }
 }
 
-#[get("/home/delete/{username}")]
-pub async fn add_delete(id: Identity, client: web::Data<Client>, username: web::Path<String>) -> HttpResponse {
+// Delete all the doc which is stored by user in "link" collection
+#[get("/home/deletealldoc/{username}")]
+pub async fn delete_all_doc(id: Identity, client: web::Data<Client>, username: web::Path<String>) -> HttpResponse {
 
     if let Some(_id) = id.identity() {
         
@@ -55,7 +59,31 @@ pub async fn add_delete(id: Identity, client: web::Data<Client>, username: web::
     }
     
 }
+// Delete only one doc which is stored by user in "link" collection on the basis of username, description, and content type
+#[get("/home/deleteonedoc/{username}")]
+pub async fn delete_one_doc(id: Identity, client: web::Data<Client>, form: web::Form<Content>) -> HttpResponse {
 
+    if let Some(_id) = id.identity() {
+        
+
+      let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
+      let deleted =collection
+                                        .delete_one(doc! {
+                                             "username": &form.username,
+                                             "content_type": &form.content_type,
+                                             "description": &form.description
+                                              }, None)
+                                        .await;
+        println!("Deleted {:#?}", deleted);
+    HttpResponse::Ok().body("Deleted Suceessfully")
+    }
+    else {
+        HttpResponse::Ok().body("Go to signin")
+    }
+    
+}
+
+// update only one doc which is stored by user in "link" collection on the basis of username, description, and content type
 #[get("/home/update")]
 pub async fn update_data(id: Identity, client: web::Data<Client>, form: web::Form<Content>) -> HttpResponse {
 
@@ -63,7 +91,7 @@ pub async fn update_data(id: Identity, client: web::Data<Client>, form: web::For
 
       let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
       let deleted =collection
-                                        .update_one(doc! { "username": &form.username, "description": &form.description  },
+                                        .update_one(doc! { "username": &form.username,"content_type": &form.content_type ,"description": &form.description  },
                                          doc!{ "$set":{
                                             "link": &form.links,
                                             "when":  Utc::now().to_string()
@@ -82,7 +110,7 @@ pub async fn update_data(id: Identity, client: web::Data<Client>, form: web::For
     
 }
 
-//Gets the user with the supplied username.
+//display all the doc of user in "link" collection if the doc visbility is true(i.e., doc is public).
 #[get("/home/display/{username}")]
 pub async  fn get_data(client: web::Data<Client>, username: web::Path<String>) -> HttpResponse {
     let username = username.into_inner();
@@ -101,7 +129,7 @@ pub async  fn get_data(client: web::Data<Client>, username: web::Path<String>) -
     
 }
 
-// Creates an index on the "username" field to force the values to be unique.
+// Creates an index on the "username" field.
 pub async fn create_username_index_in_data(client: &Client) {
     let model = IndexModel::builder()
         .keys(doc! { "username": 1 })
