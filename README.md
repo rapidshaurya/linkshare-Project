@@ -11,7 +11,7 @@ Linkshare is a social site where users can share some recommended links with any
 ## Documentation ##
 I am using mainly two collections to store data.
 
-1. login, password, nickname, and email ID
+1. To store user details in database
 
 2. To save your links in database
 
