@@ -103,7 +103,7 @@ pub async fn create_username_index(client: &Client) {
 pub async fn create_friendname_index(client: &Client) {
     let options2 = IndexOptions::builder().unique(true).build();
     let model2 = IndexModel::builder()
-        .keys(doc! { "friend_username": 1 })
+        .keys(doc! { "friend_username": 1, "username": 1 })
         .options(options2)
         .build();
     client
