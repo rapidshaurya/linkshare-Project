@@ -1,8 +1,8 @@
 use actix_web::{get, post, web, App, HttpServer, HttpResponse, services};
-use mongodb::{ bson::doc,Client, options::ClientOptions, Collection};
+use mongodb::{ bson::{doc, Document},Client, options::ClientOptions, Collection};
 use actix_identity::{ Identity, CookieIdentityPolicy, IdentityService};
 use std::process;
-use futures::TryStreamExt;
+use futures::StreamExt;
 
 mod login;
 mod userdata;
@@ -24,7 +24,7 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
      let view =id;   
      let user = path.into_inner();
      let collection2: Collection<Access> = client.database(DB_NAME).collection(COLL_NAME2);
-     let collection3: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME3);
+     let collection3: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME3);
      match collection2
                 .find_one(doc! { "my_username": &view, "friend_username":&user}, None)
                 .await
@@ -32,12 +32,17 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
                  Ok(Some(_user)) =>    { let cur = collection3
                                         .find(doc! { "username": &view }, None)
                                         .await;
-                                        let cursor = match cur { //cursor: Cursor<Document>
+                                        let mut cursor = match cur { //cursor: Cursor<Document>
                                             Ok(x) => x,
                                             Err(_) => process::exit(1)
                                         };
-                                       let doc = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
-                                       HttpResponse::Ok().body(format!("Result {:?}", doc))
+                                        let mut ans = String::new();
+                                        while let Some(doc) = cursor.next().await {
+                                            let a = doc.unwrap();
+                                            let b = format!("Username: {}\ncontent_type: {}\ndescription: {}\nlinks: {}\n\n",a.get_str("username").unwrap(), a.get_str("content_type").unwrap(), a.get_str("description").unwrap(), a.get_str("links").unwrap());
+                                            ans.push_str(&b);
+                                        }
+                                       HttpResponse::Ok().body(format!("{}", ans))
                                          },
                 Ok(None) => {HttpResponse::NotFound().body(format!("No Content available ")) },
                 Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
@@ -79,7 +84,6 @@ pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Pat
             id.forget();
             HttpResponse::Ok().body("Permission Resquired")
         }
-        
     }
     else{
         HttpResponse::Ok().body("Go to signin page")

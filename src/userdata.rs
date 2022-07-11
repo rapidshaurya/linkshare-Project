@@ -11,8 +11,7 @@ pub struct User {
     pub first_name: String,
     pub last_name: String,
     pub username: String,
-    pub password: String,
-    pub  when : String   
+    pub password: String  
 }
 
 // using Info struct to store sign username and password. 
@@ -37,10 +36,17 @@ const COLL_NAME2: &str = "access";
 // Adds a new user to the "user" collection in the database.
 #[post("/signup")]
 pub async fn signup(client: web::Data<Client>, mut form: web::Form<User>) -> HttpResponse {
-    form.when =  Utc::now().to_string();
+    let when =  Utc::now().to_string();
     form.password=encode(&form.password);
+    let doc = doc! {
+        "first_name": &form.first_name,
+        "last_name": &form.last_name,
+        "username": &form.username,
+        "password": &form.password,
+        "when" : when
+    };
     let collection = client.database(DB_NAME).collection(COLL_NAME1);
-    let result = collection.insert_one(form.into_inner(), None).await;
+    let result = collection.insert_one(doc, None).await;
     match result {
         Ok(_) => HttpResponse::Ok().body("Welcome to linkshare\n go to signin page"),
         Err(err) => HttpResponse::InternalServerError().body(err.to_string()),

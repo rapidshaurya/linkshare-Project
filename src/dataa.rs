@@ -1,20 +1,19 @@
 use actix_web::{get, web, HttpResponse};
-use mongodb::{bson::doc, Client, Collection, IndexModel};
+use mongodb::{bson::{doc, Document}, Client, Collection, IndexModel};
 use serde::{Deserialize, Serialize};
 use actix_identity::Identity;
-use futures::TryStreamExt;
+use futures::{StreamExt};
 use std::process;
 use chrono::prelude::*;
 
 // using Content structure to store all the links in collection
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Content {
-    pub username: String,
     pub content_type: String,
     pub description: String,
     pub links: String,
     pub visibility: bool,                    // for public visibility value is true else it's value is false
-    pub when: String
+
 }
 
 // name of collections
@@ -23,23 +22,30 @@ const COLL_NAME: &str = "link";
 
 // Adds data to the "link" collection in the database.
 #[get("/home/add")]
-pub async fn add_data(id: Identity, client: web::Data<Client>, mut form: web::Form<Content>) -> HttpResponse {
+pub async fn add_data(id: Identity, client: web::Data<Client>, form: web::Form<Content>) -> HttpResponse {
 
     if let Some(id) = id.identity() {
-        form.username=id;
-        form.when =  Utc::now().to_string();
+        let when =  Utc::now().to_string();
+        let doc = doc! {
+            "username": &id,
+            "content_type": &form.content_type,
+            "description": &form.description,
+            "links": &form.links,
+            "visibility": &form.visibility,
+            "when" : when
+        };
 
-      let collection:Collection<Content>  = client.database(DB_NAME).collection(COLL_NAME);
+      let collection:Collection<Document>  = client.database(DB_NAME).collection(COLL_NAME);
       let result = collection
                      .find_one(
                         doc! {
-                             "username": &form.username,
+                             "username": &id,
                              "description": &form.description,
                              "content_type": &form.content_type }, None).await;
     match result {
         Ok(Some(_user)) => HttpResponse::Ok().body("Data Already added Successfully!!!!!!"),
         Ok(None) => {
-                      let result = collection.insert_one(form.into_inner(), None).await;
+                      let result = collection.insert_one(doc, None).await;
                        match result {
                       Ok(_) => HttpResponse::Ok().body("Data added Successfully!!!!!!"),
                       Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
@@ -60,7 +66,7 @@ pub async fn delete_all_doc(id: Identity, client: web::Data<Client>) -> HttpResp
     if let Some(id) = id.identity() {
         
 
-      let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
+      let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
       let deleted =collection
                                         .delete_many(doc! { "username": id  }, None)
                                         .await;
@@ -74,14 +80,13 @@ pub async fn delete_all_doc(id: Identity, client: web::Data<Client>) -> HttpResp
 }
 // Delete only one doc which is stored by user in "link" collection on the basis of username, description, and content type
 #[get("/home/deleteonedoc")]
-pub async fn delete_one_doc(id: Identity, client: web::Data<Client>, mut form: web::Form<Content>) -> HttpResponse {
+pub async fn delete_one_doc(id: Identity, client: web::Data<Client>, form: web::Form<Content>) -> HttpResponse {
 
     if let Some(id) = id.identity() {
-      form.username=id;
-      let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
+      let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
       let deleted =collection
                             .find_one_and_delete(doc! {
-                                             "username": &form.username,
+                                             "username": &id,
                                              "content_type": &form.content_type,
                                              "description": &form.description
                                               }, None)
@@ -105,14 +110,13 @@ pub async fn delete_one_doc(id: Identity, client: web::Data<Client>, mut form: w
 
 // update only one doc which is stored by user in "link" collection on the basis of username, description, and content type
 #[get("/home/update")]
-pub async fn update_data(id: Identity, client: web::Data<Client>, mut form: web::Form<Content>) -> HttpResponse {
+pub async fn update_data(id: Identity, client: web::Data<Client>, form: web::Form<Content>) -> HttpResponse {
 
     if let Some(id) = id.identity() {
-        form.username=id;
 
-      let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
+      let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
       let deleted =collection
-                                        .update_one(doc! { "username": &form.username,"content_type": &form.content_type ,"description": &form.description  },
+                                        .update_one(doc! { "username": &id,"content_type": &form.content_type ,"description": &form.description  },
                                          doc!{ "$set":{
                                             "links": &form.links,
                                             "when":  Utc::now().to_string()
@@ -136,17 +140,24 @@ pub async fn update_data(id: Identity, client: web::Data<Client>, mut form: web:
 pub async  fn get_data(client: web::Data<Client>, username: web::Path<String>) -> HttpResponse {
     let username = username.into_inner();
     let vs=true;
-    let collection: Collection<Content> = client.database(DB_NAME).collection(COLL_NAME);
+    let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
     let cur =  collection
         .find(doc! { "username": &username, "visibility":&vs}, None)
         .await;
         
-        let cursor = match cur { //cursor: Cursor<Document>
+        let mut cursor = match cur { //cursor: Cursor<Document>
             Ok(x) => x,
             Err(_) => process::exit(1)
         };
-    let doc = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
-    HttpResponse::Ok().body(format!("Result {:#?}", doc))
+    let mut ans = String::new();
+        while let Some(doc) = cursor.next().await {
+            let a = doc.unwrap();
+            let b = format!("Username: {}\ncontent_type: {}\ndescription: {}\nlinks: {}\n\n",a.get_str("username").unwrap(), a.get_str("content_type").unwrap(), a.get_str("description").unwrap(), a.get_str("links").unwrap());
+            ans.push_str(&b);
+          }
+          
+
+    HttpResponse::Ok().body(format!("Result:\n{}", ans))
     
 }
 
@@ -157,7 +168,7 @@ pub async fn create_username_index_in_data(client: &Client) {
         .build();
     client
         .database(DB_NAME)
-        .collection::<Content>(COLL_NAME)
+        .collection::<Document>(COLL_NAME)
         .create_index(model, None)
         .await
         .expect("creating an index should succeed");
