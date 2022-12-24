@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
 [dependencies]
-actix-web = "4"
+actix-web = "4.2.1"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "*"
@@ -13,6 +15,9 @@ actix-identity = "0.4.0"
 futures = "0.3"
 chrono = "0.4"
 base64 = "0.13.0"
+utoipa = { version = "2.4.2", features = ["actix_extras"] }
+utoipa-swagger-ui = { version = "2", features = ["actix-web"] }
+dotenv = "0.15.0"
 [dependencies.mongodb]
 version = "2.2.0"
 default-features = false
