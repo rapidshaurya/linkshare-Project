@@ -25,7 +25,8 @@ async fn main() -> std::io::Result<()> {
             delete_all_doc,
             update_data,
             signup,
-            get_data
+            get_data,
+            mylinks,
                 ),
                 components(
                     schemas(Access, Content, User, LoginCred)
@@ -76,7 +77,8 @@ async fn main() -> std::io::Result<()> {
                 delete_all_doc,
                 update_data,
                 signup,
-                get_data
+                get_data,
+                mylinks
             ])
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-doc/openapi.json", openapi.clone()),

@@ -218,6 +218,60 @@ pub async fn get_data(client: web::Data<Client>, username: web::Path<String>) ->
     HttpResponse::Ok().json(serde_json::json!({ "result": ans }))
 }
 
+
+
+
+#[utoipa::path(
+    get,
+    path = "/home/mylinks",
+    security(
+        (),
+        ("auth-cookie" = ["read:items"]),
+    ),    
+)]
+//display all the doc of user in "link" collection if the doc visbility is true(i.e., doc is public).
+#[get("/home/mylinks")]
+pub async fn mylinks(id: Identity, client: web::Data<Client>) -> HttpResponse {
+    if let Some(id) = id.identity() {
+    let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
+    let cur = collection
+        .find(doc! { "username": &id}, None)
+        .await;
+
+    let mut cursor = match cur {
+        //cursor: Cursor<Document>
+        Ok(x) => x,
+        Err(_) => process::exit(1),
+    };
+    let mut ans:Vec<PubContent> = Vec::new();
+    while let Some(doc) = cursor.next().await {
+        let a = doc.unwrap();
+        ans.push(PubContent{
+            _id:a.get_object_id("_id").unwrap().into(),
+            username:a.get_str("username").unwrap().to_string(),
+            content_type:
+            a.get_str("content_type").unwrap().to_string(),
+            description:
+            a.get_str("description").unwrap().to_string(),
+            links:
+            a.get_str("links").unwrap().to_string()
+        })
+    }
+
+    HttpResponse::Ok().json(serde_json::json!({ "result": ans }))
+    }else{
+        HttpResponse::Ok()
+            .status(StatusCode::UNAUTHORIZED)
+            .body("invalid token")
+    }
+    
+}
+
+
+
+
+
+
 // Creates an index on the "username" field.
 pub async fn create_username_index_in_data(client: &Client) {
     let model = IndexModel::builder().keys(doc! { "username": 1 }).build();
