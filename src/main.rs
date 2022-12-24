@@ -65,7 +65,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(client.clone()))
             .wrap(IdentityService::new(policy))
-            .route("/", web::get().to(login_form))
             .service(services![
                 signin,
                 add_data,
