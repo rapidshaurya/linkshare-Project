@@ -3,7 +3,7 @@ use actix_web::{get, http::StatusCode, web, HttpResponse, post};
 use chrono::prelude::*;
 use futures::StreamExt;
 use mongodb::{
-    bson::{doc, Document},
+    bson::{doc, Document, oid::ObjectId},
     Client, Collection, IndexModel,
 };
 
@@ -98,35 +98,34 @@ pub async fn delete_all_doc(id: Identity, client: web::Data<Client>) -> HttpResp
 
 #[utoipa::path(
     post,
-    path = "/home/deletealldoc",
-    request_body = Content,
+    path = "/home/delete_one_doc/{objid}",
     security(
         (),
-        ("auth-cookie" = ["read:items", "edit:items"]),
+        ("auth-cookie" = ["read:items"]),
     ),
     
 )]
 // Delete only one doc which is stored by user in "link" collection on the basis of username, description, and content type
-#[post("/home/deleteonedoc")]
+#[post("/home/delete_one_doc/{objid}")]
 pub async fn delete_one_doc(
     id: Identity,
     client: web::Data<Client>,
-    form: web::Json<Content>,
+    objid : web::Path<String>,
 ) -> HttpResponse {
     if let Some(id) = id.identity() {
+        let objid=objid.into_inner();
         let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
         let deleted = collection
             .find_one_and_delete(
                 doc! {
+                "_id": objid.parse::<ObjectId>().unwrap(),
                 "username": &id,
-                "content_type": &form.content_type,
-                "description": &form.description
                  },
                 None,
             )
             .await;
         match deleted {
-            Ok(Some(user)) => HttpResponse::Accepted().body(format!("Deleted Data is\n {:#?}", user)),
+            Ok(Some(data)) => HttpResponse::Accepted().json(serde_json::json!({"data deleted successfully ":data})),
             Ok(None) => HttpResponse::NoContent().body(format!("No Content Available")),
             Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
         }
@@ -141,7 +140,7 @@ pub async fn delete_one_doc(
 
 #[utoipa::path(
     post,
-    path = "/home/update",
+    path = "/home/update/{obj_id}",
     request_body = Content,
     security(
         (),
@@ -150,18 +149,23 @@ pub async fn delete_one_doc(
     
 )]
 
-#[post("/home/update")]
+#[post("/home/update/{obj_id}")]
 pub async fn update_data(
     id: Identity,
     client: web::Data<Client>,
+    obj_id : web::Path<String>,
     form: web::Json<Content>,
 ) -> HttpResponse {
     if let Some(id) = id.identity() {
+        let obj_id=obj_id.into_inner();
         let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
         let deleted =collection
-                                        .update_one(doc! { "username": &id,"content_type": &form.content_type ,"description": &form.description  },
+                                        .update_one(doc! { "username": &id,"_id":  obj_id.parse::<ObjectId>().unwrap()},
                                          doc!{ "$set":{
-                                            "links": &form.links,
+                                            "content_type": form.content_type.clone(),
+                                            "description": form.description.clone(),
+                                            "visibility": form.visibility.clone(),
+                                            "links": form.links.clone(),
                                             "when":  Utc::now().to_string()
                                                     }
                                         } , None)
@@ -200,6 +204,7 @@ pub async fn get_data(client: web::Data<Client>, username: web::Path<String>) ->
     while let Some(doc) = cursor.next().await {
         let a = doc.unwrap();
         ans.push(PubContent{
+            _id:a.get_object_id("_id").unwrap().into(),
             username:a.get_str("username").unwrap().to_string(),
             content_type:
             a.get_str("content_type").unwrap().to_string(),

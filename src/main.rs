@@ -28,7 +28,7 @@ async fn main() -> std::io::Result<()> {
             get_data
                 ),
                 components(
-                    schemas(Access, Content, User, Info)
+                    schemas(Access, Content, User, LoginCred)
                 ),
                 tags(
                     (name = "LINKSHARE", description = "Link management endpoints.")

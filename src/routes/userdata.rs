@@ -55,10 +55,10 @@ pub async fn signup(client: web::Data<Client>, mut form: web::Json<User>) -> Htt
         (),
         ("auth-cookie" = ["read:items", "edit:items"]),
     ),
-    request_body = Info
+    request_body = LoginCred
 )]
 #[post("/signin")]
-pub async  fn signin(id: Identity, client: web::Data<Client>, form: web::Json<Info>) -> HttpResponse {
+pub async  fn signin(id: Identity, client: web::Data<Client>, form: web::Json<LoginCred>) -> HttpResponse {
     let username = form.username.to_string();
     let password = encode(form.password.to_string()); // encode function is used to encode password
 
@@ -198,7 +198,9 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
                                         let mut ans:Vec<PubContent> = Vec::new();
                                         while let Some(doc) = cursor.next().await {
                                         let a = doc.unwrap();
+                                        
                                         ans.push(PubContent{
+                                        _id:a.get_object_id("_id").unwrap().into(),    
                                         username:a.get_str("username").unwrap().to_string(),
                                            content_type: a.get_str("content_type").unwrap().to_string(),
                                            description: a.get_str("description").unwrap().to_string(),

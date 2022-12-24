@@ -1,16 +1,22 @@
+use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize, ToSchema)]
 pub struct Content {
+    #[schema(example = "youtube")]
     pub content_type: String,
+    #[schema(example = "rust demo video link")]
     pub description: String,
+    #[schema(example = "https://www.youtube.com/watch?v=aYsUBddY7KY&t=2s")]
     pub links: String,
+    #[schema(example = true)]
     pub visibility: bool, // for public visibility value is true else it's value is false
 }
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct PubContent{
+    pub _id: Option<ObjectId>,
     pub username:String,
     pub content_type:String,
     pub description:String,
@@ -33,7 +39,7 @@ pub struct User {
 
 // using Info struct to store sign username and password. 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct Info {
+pub struct LoginCred {
     #[schema(example = "RG")]
     pub username: String,
     #[schema(example = "12345678")]
