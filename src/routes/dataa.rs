@@ -179,12 +179,7 @@ pub async fn update_data(
 
 #[utoipa::path(
     get,
-    path = "/home/display/{username}",
-    security(
-        (),
-        ("auth-cookie" = ["read:items"]),
-    ),
-    
+    path = "/home/display/{username}",    
 )]
 //display all the doc of user in "link" collection if the doc visbility is true(i.e., doc is public).
 #[get("/home/display/{username}")]
