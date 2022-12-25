@@ -200,7 +200,7 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
                                         let a = doc.unwrap();
                                         
                                         ans.push(PubContent{
-                                        _id:a.get_object_id("_id").unwrap().into(),    
+                                        id:a.get_object_id("_id").unwrap().to_string(),    
                                         username:a.get_str("username").unwrap().to_string(),
                                            content_type: a.get_str("content_type").unwrap().to_string(),
                                            description: a.get_str("description").unwrap().to_string(),

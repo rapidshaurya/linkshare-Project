@@ -1,4 +1,4 @@
-use mongodb::bson::oid::ObjectId;
+
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -16,7 +16,7 @@ pub struct Content {
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct PubContent{
-    pub _id: Option<ObjectId>,
+    pub id: String,
     pub username:String,
     pub content_type:String,
     pub description:String,

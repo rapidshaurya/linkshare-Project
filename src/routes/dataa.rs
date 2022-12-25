@@ -58,7 +58,7 @@ pub async fn add_data(
             Ok(None) => {
                 let result = collection.insert_one(doc, None).await;
                 match result {
-                    Ok(res) => HttpResponse::Ok().body(format!("{:?}", res)),
+                    Ok(_) => HttpResponse::Ok().finish(),
                     Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
                 }
             }
@@ -159,7 +159,7 @@ pub async fn update_data(
     if let Some(id) = id.identity() {
         let obj_id=obj_id.into_inner();
         let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
-        let deleted =collection
+        let updated =collection
                                         .update_one(doc! { "username": &id,"_id":  obj_id.parse::<ObjectId>().unwrap()},
                                          doc!{ "$set":{
                                             "content_type": form.content_type.clone(),
@@ -170,7 +170,7 @@ pub async fn update_data(
                                                     }
                                         } , None)
                                         .await;
-        match deleted {
+        match updated {
             Ok(_) => HttpResponse::Accepted().body("Data Updated Successfully!!!!!!"),
             Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
         }
@@ -204,7 +204,7 @@ pub async fn get_data(client: web::Data<Client>, username: web::Path<String>) ->
     while let Some(doc) = cursor.next().await {
         let a = doc.unwrap();
         ans.push(PubContent{
-            _id:a.get_object_id("_id").unwrap().into(),
+            id:a.get_object_id("_id").unwrap().to_string(),
             username:a.get_str("username").unwrap().to_string(),
             content_type:
             a.get_str("content_type").unwrap().to_string(),
@@ -247,7 +247,7 @@ pub async fn mylinks(id: Identity, client: web::Data<Client>) -> HttpResponse {
     while let Some(doc) = cursor.next().await {
         let a = doc.unwrap();
         ans.push(PubContent{
-            _id:a.get_object_id("_id").unwrap().into(),
+            id:a.get_object_id("_id").unwrap().to_string(),
             username:a.get_str("username").unwrap().to_string(),
             content_type:
             a.get_str("content_type").unwrap().to_string(),
