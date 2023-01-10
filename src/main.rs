@@ -1,5 +1,8 @@
+
+
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{services, web, App, HttpServer};
+
 use linkshare::*;
 
 
@@ -59,6 +62,7 @@ async fn main() -> std::io::Result<()> {
     create_username_index(&client).await;
     create_username_index_in_data(&client).await;
     create_friendname_index(&client).await;
+    dbg!("server running at 4000");
     HttpServer::new(move || {
         let policy = CookieIdentityPolicy::new(&[0; 32])
             .name("auth-cookie")
@@ -84,7 +88,7 @@ async fn main() -> std::io::Result<()> {
                 SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-doc/openapi.json", openapi.clone()),
             )
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("127.0.0.1", 4000))?
     .run()
     .await
 }

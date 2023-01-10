@@ -6,6 +6,7 @@ use mongodb::{
     bson::{doc, Document, oid::ObjectId},
     Client, Collection, IndexModel,
 };
+use validator::Validate;
 
 use std::process;
 use crate::routes::utils::*;
@@ -33,6 +34,12 @@ pub async fn add_data(
     
 ) -> HttpResponse {
     if let Some(id) = id.identity() {
+        let validate=form.validate();
+        
+        match validate {
+            Ok(())=>(),
+            Err(e)=> return HttpResponse::build(StatusCode::BAD_REQUEST).body(format!("{:?}",e))
+        }
         let when = Utc::now().to_string();
         let doc = doc! {
             "username": &id,

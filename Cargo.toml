@@ -16,7 +16,9 @@ futures = "0.3"
 chrono = "0.4"
 base64 = "0.13.0"
 utoipa = { version = "2.4.2", features = ["actix_extras"] }
-utoipa-swagger-ui = { version = "2", features = ["actix-web"] }
+utoipa-swagger-ui = { version = "3.0.1", features = ["actix-web"] }
+validator = { version = "0.16", features = ["derive"] }
+validator_derive = "0.16"
 dotenv = "0.15.0"
 [dependencies.mongodb]
 version = "2.2.0"

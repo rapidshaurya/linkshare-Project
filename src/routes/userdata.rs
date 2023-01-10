@@ -3,6 +3,7 @@ use mongodb::{bson::{doc, Document}, options::IndexOptions, Client, Collection, 
 use base64::encode;
 use actix_identity::Identity;
 use chrono::prelude::*;
+use validator::{Validate};
 use std::process;
 use futures::StreamExt;
 
@@ -28,6 +29,11 @@ const COLL_NAME3: &str = "link";
 )]
 #[post("/signup")]
 pub async fn signup(client: web::Data<Client>, mut form: web::Json<User>) -> HttpResponse {
+    let a=form.validate();
+    match a {
+        Ok(())=>(),
+        Err(e)=>return HttpResponse::build(StatusCode::BAD_REQUEST).body(format!("{:?}",e))
+    }
     let when =  Utc::now().to_string();
     form.password=encode(&form.password);
     let doc = doc! {
