@@ -1,10 +1,8 @@
 
 
 use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{services, web, App, HttpServer};
-
+use actix_web::{services, web, App, HttpServer, middleware::Logger};
 use linkshare::*;
-
 
 use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
@@ -15,6 +13,7 @@ use utoipa_swagger_ui::SwaggerUi;
 // main function used to declare all routes and helps in establishing connection to database
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    
     #[derive(OpenApi)]
     #[openapi(
         paths(
@@ -55,14 +54,14 @@ async fn main() -> std::io::Result<()> {
 
     // Make instance variable of ApiDoc so all worker threads gets the same instance.
     let openapi = ApiDoc::openapi();
-
-    let client = connect2_mongodb().await;
-
+    
+    
+    let listner = ConfigConn::new();
+    let client = ConfigConn::connect2_mongodb().await;
     //used for indexing
     create_username_index(&client).await;
     create_username_index_in_data(&client).await;
     create_friendname_index(&client).await;
-    dbg!("server running at 4000");
     HttpServer::new(move || {
         let policy = CookieIdentityPolicy::new(&[0; 32])
             .name("auth-cookie")
@@ -70,6 +69,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(client.clone()))
             .wrap(IdentityService::new(policy))
+            .wrap(Logger::default())
             .service(services![
                 signin,
                 add_data,
@@ -88,7 +88,7 @@ async fn main() -> std::io::Result<()> {
                 SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-doc/openapi.json", openapi.clone()),
             )
     })
-    .bind(("127.0.0.1", 4000))?
+    .bind(listner)?
     .run()
     .await
 }
