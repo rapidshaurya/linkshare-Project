@@ -1,16 +1,19 @@
-use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{middleware::Logger, services, web, App, HttpServer};
-use linkshare::*;
+use actix_identity::{IdentityMiddleware};
+use actix_session::{ SessionMiddleware, storage::CookieSessionStore};
 
+use actix_web::{cookie::Key, middleware::Logger, services, web, App, HttpServer};
+use actix_web_lab::middleware::from_fn;
+use linkshare::*;
+use tracing_subscriber::EnvFilter;
 use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
     Modify, OpenApi,
 };
 use utoipa_swagger_ui::SwaggerUi;
-use tracing_subscriber::EnvFilter;
 // main function used to declare all routes and helps in establishing connection to database
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    
     dotenv::dotenv().ok();
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
@@ -63,14 +66,20 @@ async fn main() -> std::io::Result<()> {
     create_username_index(&client).await;
     create_username_index_in_data(&client).await;
     create_friendname_index(&client).await;
+    
+    let secret_key = Key::generate();
     HttpServer::new(move || {
-        let policy = CookieIdentityPolicy::new(&[0; 32])
-            .name("auth-cookie")
-            .secure(false);
+        let session_mw =
+            SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone()).cookie_name("auth-cookie".to_owned())
+                // disable secure cookie for local testing
+                .cookie_secure(false)
+                .build();
         App::new()
+            .wrap(IdentityMiddleware::default())
+            .wrap(session_mw)
             .app_data(web::Data::new(client.clone()))
-            .wrap(IdentityService::new(policy))
             .wrap(Logger::default())
+            .wrap(from_fn(middleware_wraper))
             .service(services![
                 signin,
                 add_data,

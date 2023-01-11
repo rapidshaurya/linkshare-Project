@@ -1,4 +1,4 @@
-use actix_web::{get, post, web, HttpResponse, http::StatusCode};
+use actix_web::{get, post, web, HttpResponse, http::StatusCode ,HttpRequest, HttpMessage};
 use mongodb::{bson::{doc, Document}, options::IndexOptions, Client, Collection, IndexModel};
 use base64::encode;
 use actix_identity::Identity;
@@ -74,7 +74,7 @@ pub async fn signup(client: web::Data<Client>, mut form: web::Json<User>) -> Res
     request_body = LoginCred
 )]
 #[post("/signin")]
-pub async  fn signin(id: Identity, client: web::Data<Client>, form: web::Json<LoginCred>) -> HttpResponse {
+pub async  fn signin(client: web::Data<Client>, form: web::Json<LoginCred>, request: HttpRequest) -> HttpResponse {
     let username = form.username.to_string();
     let password = encode(form.password.to_string()); // encode function is used to encode password
 
@@ -85,7 +85,7 @@ pub async  fn signin(id: Identity, client: web::Data<Client>, form: web::Json<Lo
     match ans
     {
         Ok(Some(_user)) =>  { 
-            id.remember(username.to_owned());
+            Identity::login(&request.extensions(), username.to_owned()).unwrap();
             HttpResponse::Ok().body(format!("Welcome {}", username)) 
         } 
         Ok(None) => {
@@ -111,12 +111,8 @@ pub async  fn signin(id: Identity, client: web::Data<Client>, form: web::Json<Lo
 #[post("/logout")]
 async fn logout(id: Identity) -> HttpResponse {
     // remove identity
-    if let Some(_id) = id.identity() {
-        id.forget();
-        HttpResponse::Accepted().body(format!("logout Successfully")) 
-    } else {
-        HttpResponse::Ok().status(StatusCode::UNAUTHORIZED).body("invalid token") 
-    }
+    id.logout();
+    HttpResponse::Accepted().body(format!("logout Successfully")) 
     
 }
 
@@ -166,9 +162,9 @@ pub async fn create_friendname_index(client: &Client) {
              ),
 )]
 #[post("/Home/giveaccess")]
-pub async fn prv_data(id: Identity, client: web::Data<Client>,mut form: web::Json<Access>) -> HttpResponse {
-    if let Some(id) = id.identity() {
-        form.my_username=id;
+pub async fn prv_data(_id: Option<Identity>, client: web::Data<Client>,mut form: web::Json<Access>) -> HttpResponse {
+    if let Some(id) = _id {
+        form.my_username=id.id().unwrap();
         let collection = client.database(DB_NAME).collection(COLL_NAME2);
         let result = collection.insert_one(form.into_inner(), None).await;
         match result {
@@ -194,9 +190,9 @@ pub async fn prv_data(id: Identity, client: web::Data<Client>,mut form: web::Jso
              ),
 )]
 #[get("/Home/{user}")]
-pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web::Path<String>) -> HttpResponse {
-    if let Some(id) = id.identity() {
-     let view =id;   
+pub async fn access_prv_data(id: Option<Identity>, client: web::Data<Client>, path: web::Path<String>) -> HttpResponse {
+    if let Some(_id) = id {
+     let view =_id.id().unwrap();   
      let user = path.into_inner();
      let collection2: Collection<Access> = client.database(DB_NAME).collection(COLL_NAME2);
      let collection3: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME3);
@@ -249,9 +245,9 @@ pub async fn access_prv_data(id: Identity, client: web::Data<Client>, path: web:
              ),
 )]
 #[post("/Home/delete/{ans}")]
-pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Path<String>)  -> HttpResponse {
-    if let Some(_id) = id.identity() {
-        let user=_id;
+pub async fn deleteuser(id: Option<Identity>, client: web::Data<Client>,  path: web::Path<String>)  -> HttpResponse {
+    if let Some(_id) = id {
+        let user=_id.id().unwrap();
         let ans = path.into_inner();
         if ans == "Yes" {
             let collection1: Collection<Access> = client.database(DB_NAME).collection(COLL_NAME1);
@@ -271,11 +267,11 @@ pub async fn deleteuser(id: Identity, client: web::Data<Client>,  path: web::Pat
                                         .await;
             println!("{:?}", deleted3);
             
-            id.forget();
+            _id.logout();
             HttpResponse::Ok().body("Account Deleted")
         }
         else {
-            id.forget();
+            _id.logout();
             HttpResponse::Ok().body("Permission Required")
         }
     }

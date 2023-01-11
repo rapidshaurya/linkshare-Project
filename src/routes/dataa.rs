@@ -30,12 +30,13 @@ const COLL_NAME: &str = "link";
 #[instrument(name = "Add new link", skip_all)]
 #[post("/home/add")]
 pub async fn add_data(
-    id: Identity,
+    _id: Option<Identity>,
     client: web::Data<Client>,
     form: web::Json<Content>,
     
 ) -> Result<HttpResponse, Error> {
-    if let Some(id) = id.identity() {
+    if let Some(user) = _id {
+        let username=user.id().unwrap();
         let validate=form.validate();
         
         match validate {
@@ -51,7 +52,7 @@ pub async fn add_data(
         }
         let when = Utc::now().to_string();
         let doc = doc! {
-            "username": &id,
+            "username": &username,
             "content_type": &form.content_type,
             "description": &form.description,
             "links": &form.links,
@@ -63,7 +64,7 @@ pub async fn add_data(
         let result = collection
             .find_one(
                 doc! {
-                "username": &id,
+                "username": &username,
                 "description": &form.description,
                 "content_type": &form.content_type },
                 None,
@@ -100,10 +101,11 @@ pub async fn add_data(
 )]
 // Delete all the doc which is stored by user in "link" collection
 #[post("/home/deletealldoc")]
-pub async fn delete_all_doc(id: Identity, client: web::Data<Client>) -> HttpResponse {
-    if let Some(id) = id.identity() {
+pub async fn delete_all_doc(_id: Option<Identity>, client: web::Data<Client>) -> HttpResponse {
+    if let Some(id) = _id {
+        let username=id.id().unwrap();
         let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
-        let deleted = collection.delete_many(doc! { "username": id  }, None).await;
+        let deleted = collection.delete_many(doc! { "username": username  }, None).await;
         println!("Deleted {:#?}", deleted);
         HttpResponse::Ok().body("Deleted Suceessfully")
     } else {
@@ -125,18 +127,19 @@ pub async fn delete_all_doc(id: Identity, client: web::Data<Client>) -> HttpResp
 // Delete only one doc which is stored by user in "link" collection on the basis of username, description, and content type
 #[post("/home/delete_one_doc/{objid}")]
 pub async fn delete_one_doc(
-    id: Identity,
+    _id: Option<Identity>,
     client: web::Data<Client>,
     objid : web::Path<String>,
 ) -> HttpResponse {
-    if let Some(id) = id.identity() {
+    if let Some(id) = _id {
+        let username=id.id().unwrap();
         let objid=objid.into_inner();
         let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
         let deleted = collection
             .find_one_and_delete(
                 doc! {
                 "_id": objid.parse::<ObjectId>().unwrap(),
-                "username": &id,
+                "username": &username,
                  },
                 None,
             )
@@ -168,12 +171,13 @@ pub async fn delete_one_doc(
 
 #[post("/home/update/{obj_id}")]
 pub async fn update_data(
-    id: Identity,
+    _id: Option<Identity>,
     client: web::Data<Client>,
     obj_id : web::Path<String>,
     form: web::Json<Content>,
 ) -> HttpResponse {
-    if let Some(id) = id.identity() {
+    if let Some(id) = _id {
+        let id =id.id().unwrap();
         let obj_id=obj_id.into_inner();
         let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
         let updated =collection
@@ -248,11 +252,12 @@ pub async fn get_data(client: web::Data<Client>, username: web::Path<String>) ->
 )]
 //display all the doc of user in "link" collection if the doc visbility is true(i.e., doc is public).
 #[get("/home/mylinks")]
-pub async fn mylinks(id: Identity, client: web::Data<Client>) -> HttpResponse {
-    if let Some(id) = id.identity() {
+pub async fn mylinks(_id: Option<Identity>, client: web::Data<Client>) -> HttpResponse {
+    if let Some(user) = _id {
+        let username=user.id().unwrap();
     let collection: Collection<Document> = client.database(DB_NAME).collection(COLL_NAME);
     let cur = collection
-        .find(doc! { "username": &id}, None)
+        .find(doc! { "username": &username}, None)
         .await;
 
     let mut cursor = match cur {
