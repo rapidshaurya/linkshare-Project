@@ -15,13 +15,12 @@ pub struct Content {
     pub visibility: bool, // for public visibility value is true else it's value is false
 }
 
-#[derive(Clone, Deserialize, Serialize, Validate)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct PubContent{
     pub id: String,
     pub username:String,
     pub content_type:String,
     pub description:String,
-    #[validate(url)]
     pub links:String,
 }
 
@@ -38,6 +37,7 @@ pub struct User {
     #[validate(length(min = 2))]
     pub username: String,
     #[schema(example = "12345678")]
+    #[validate(length(min = 4))]
     pub password: String  
 }
 

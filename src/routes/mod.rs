@@ -8,3 +8,6 @@ pub use userdata::*;
 
 mod utils;
 pub use utils::*;
+
+mod error;
+pub use error::*;

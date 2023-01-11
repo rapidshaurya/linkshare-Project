@@ -6,11 +6,12 @@ use mongodb::{
     bson::{doc, Document, oid::ObjectId},
     Client, Collection, IndexModel,
 };
-use validator::Validate;
-
+use tracing::instrument;
+use validator::{Validate};
+use crate::{Error, ErrorType};
 use std::process;
 use crate::routes::utils::*;
-
+use tracing::{warn};
 // name of collections
 const DB_NAME: &str = "linkshare";
 const COLL_NAME: &str = "link";
@@ -26,19 +27,27 @@ const COLL_NAME: &str = "link";
         ("auth-cookie" = ["read:items"]),
     ),
 )]
+#[instrument(name = "Add new link", skip_all)]
 #[post("/home/add")]
 pub async fn add_data(
     id: Identity,
     client: web::Data<Client>,
     form: web::Json<Content>,
     
-) -> HttpResponse {
+) -> Result<HttpResponse, Error> {
     if let Some(id) = id.identity() {
         let validate=form.validate();
         
         match validate {
             Ok(())=>(),
-            Err(e)=> return HttpResponse::build(StatusCode::BAD_REQUEST).body(format!("{:?}",e))
+            Err(e)=> {
+                warn!("{:?}",e.field_errors());
+            
+    
+            let error =Error::new(ErrorType::BADREQUEST("ValidationError"));
+            
+            return Err(error)
+        }
         }
         let when = Utc::now().to_string();
         let doc = doc! {
@@ -61,20 +70,21 @@ pub async fn add_data(
             )
             .await;
         match result {
-            Ok(Some(_user)) => HttpResponse::Ok().body("Data Already added Successfully!!!!!!"),
+            Ok(Some(_user)) => Ok(HttpResponse::Ok().body("Data Already added Successfully!!!!!!")) ,
             Ok(None) => {
                 let result = collection.insert_one(doc, None).await;
                 match result {
-                    Ok(_) => HttpResponse::Ok().finish(),
-                    Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+                    Ok(_) => Ok(HttpResponse::Ok().finish()),
+                    Err(err) => Ok(HttpResponse::InternalServerError().body(err.to_string())),
                 }
             }
-            Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+            Err(err) => Ok(HttpResponse::InternalServerError().body(err.to_string())) ,
         }
     } else {
-        HttpResponse::Ok()
-            .status(StatusCode::UNAUTHORIZED)
-            .body("invalid token")
+        Ok(HttpResponse::Ok()
+        .status(StatusCode::UNAUTHORIZED)
+        .body("invalid token"))
+        
     }
 }
 

@@ -1,13 +1,12 @@
 use std::env;
 use mongodb::{options::ClientOptions, Client};
-use tracing::{info};
-use tracing_subscriber::EnvFilter;
+use tracing::{info, instrument};
 pub struct ConfigConn {}
 
 impl ConfigConn {
+    #[instrument(name = "load env")]
     pub fn new() -> String {
         dotenv::dotenv().ok();
-        tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).init();
         info!("loading env");
         let host = env::var("HOST").expect("Failed to load host from env");
         let port = env::var("PORT").expect("Failed to load port from env");
@@ -16,7 +15,7 @@ impl ConfigConn {
         listner
     }
 
-   
+    #[instrument(name = "connect2Db", parent = None)]
     pub async fn connect2_mongodb()-> Client{
         
         info!("Connecting to db!!!");

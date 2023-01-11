@@ -1,7 +1,5 @@
-
-
 use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{services, web, App, HttpServer, middleware::Logger};
+use actix_web::{middleware::Logger, services, web, App, HttpServer};
 use linkshare::*;
 
 use utoipa::{
@@ -9,11 +7,15 @@ use utoipa::{
     Modify, OpenApi,
 };
 use utoipa_swagger_ui::SwaggerUi;
-
+use tracing_subscriber::EnvFilter;
 // main function used to declare all routes and helps in establishing connection to database
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    
+    dotenv::dotenv().ok();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_target(false)
+        .init();
     #[derive(OpenApi)]
     #[openapi(
         paths(
@@ -54,8 +56,7 @@ async fn main() -> std::io::Result<()> {
 
     // Make instance variable of ApiDoc so all worker threads gets the same instance.
     let openapi = ApiDoc::openapi();
-    
-    
+
     let listner = ConfigConn::new();
     let client = ConfigConn::connect2_mongodb().await;
     //used for indexing

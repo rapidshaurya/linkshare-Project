@@ -3,10 +3,12 @@ use mongodb::{bson::{doc, Document}, options::IndexOptions, Client, Collection, 
 use base64::encode;
 use actix_identity::Identity;
 use chrono::prelude::*;
+use tracing::warn;
 use validator::{Validate};
 use std::process;
 use futures::StreamExt;
-
+use tracing::instrument;
+use crate::{Error,ErrorType};
 use crate::routes::utils::*;
 //name of some collection and database
 const DB_NAME: &str = "linkshare";
@@ -27,12 +29,20 @@ const COLL_NAME3: &str = "link";
     request_body = User,
     
 )]
+#[instrument(name = "signup", skip_all)]
 #[post("/signup")]
-pub async fn signup(client: web::Data<Client>, mut form: web::Json<User>) -> HttpResponse {
+pub async fn signup(client: web::Data<Client>, mut form: web::Json<User>) -> Result<HttpResponse, Error>  {
     let a=form.validate();
     match a {
         Ok(())=>(),
-        Err(e)=>return HttpResponse::build(StatusCode::BAD_REQUEST).body(format!("{:?}",e))
+        Err(e)=>{
+            
+
+            warn!("{:?}",e.field_errors());
+            
+    
+            let error =Error::new(ErrorType::BADREQUEST("ValidationError"));
+            return Err(error)}
     }
     let when =  Utc::now().to_string();
     form.password=encode(&form.password);
@@ -46,8 +56,8 @@ pub async fn signup(client: web::Data<Client>, mut form: web::Json<User>) -> Htt
     let collection = client.database(DB_NAME).collection(COLL_NAME1);
     let result = collection.insert_one(doc, None).await;
     match result {
-        Ok(_) => HttpResponse::Created().body("Welcome to linkshare\n go to signin page"),
-        Err(err) => HttpResponse::Conflict().body(err.to_string()),
+        Ok(_) => Ok(HttpResponse::Created().body("Welcome to linkshare\n go to signin page")),
+        Err(err) => Ok(HttpResponse::Conflict().body(err.to_string())),
     }
 }
 
