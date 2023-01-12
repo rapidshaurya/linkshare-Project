@@ -13,12 +13,12 @@ use utoipa_swagger_ui::SwaggerUi;
 // main function used to declare all routes and helps in establishing connection to database
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    
     dotenv::dotenv().ok();
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .with_target(false)
         .init();
+    
     #[derive(OpenApi)]
     #[openapi(
         paths(
@@ -60,8 +60,10 @@ async fn main() -> std::io::Result<()> {
     // Make instance variable of ApiDoc so all worker threads gets the same instance.
     let openapi = ApiDoc::openapi();
 
-    let listner = ConfigConn::new();
-    let client = ConfigConn::connect2_mongodb().await;
+    let listner = Configure::load_env().expect("failed to load env");
+    let client = listner.connect2_mongodb().await.expect("failed to connect with db");
+    let listner=format!("{}:{}",listner.host, listner.port);
+    
     //used for indexing
     create_username_index(&client).await;
     create_username_index_in_data(&client).await;

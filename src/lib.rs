@@ -1,6 +1,6 @@
 mod routes;
 pub use routes::*;
-mod config;
-pub use config::*;
+mod configure;
+pub use configure::*;
 mod middleware;
 pub use middleware::*;
