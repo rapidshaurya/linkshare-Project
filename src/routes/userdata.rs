@@ -99,7 +99,7 @@ pub async  fn signin(client: web::Data<Client>, form: web::Json<LoginCred>, requ
 
 #[utoipa::path(
     post,
-    path = "/logout",
+    path = "/home/logout",
     responses(
         (status = 200, description = "logout Successfully"),
     ),
@@ -151,7 +151,7 @@ pub async fn create_friendname_index(client: &Client) {
 
 #[utoipa::path(
     post,
-    path = "/Home/giveaccess",
+    path = "/home/giveaccess",
     responses(
         (status = 200, description = "Now he can access your private links"),
     ),
@@ -161,7 +161,7 @@ pub async fn create_friendname_index(client: &Client) {
                  ("auth-cookie" = ["read:items", "edit:items"]),
              ),
 )]
-#[post("/Home/giveaccess")]
+#[post("/giveaccess")]
 pub async fn prv_data(_id: Option<Identity>, client: web::Data<Client>,mut form: web::Json<Access>) -> HttpResponse {
     if let Some(id) = _id {
         form.my_username=id.id().unwrap();
@@ -180,7 +180,7 @@ pub async fn prv_data(_id: Option<Identity>, client: web::Data<Client>,mut form:
 
 #[utoipa::path(
     get,
-    path = "/Home/{user}",
+    path = "/home/{user}",
     responses(
         (status = 200, description = "Now he can access your private links"),
     ),
@@ -189,7 +189,7 @@ pub async fn prv_data(_id: Option<Identity>, client: web::Data<Client>,mut form:
                  ("auth-cookie" = ["read:items"]),
              ),
 )]
-#[get("/Home/{user}")]
+#[get("/{user}")]
 pub async fn access_prv_data(id: Option<Identity>, client: web::Data<Client>, path: web::Path<String>) -> HttpResponse {
     if let Some(_id) = id {
      let view =_id.id().unwrap();   
@@ -235,7 +235,7 @@ pub async fn access_prv_data(id: Option<Identity>, client: web::Data<Client>, pa
 
 #[utoipa::path(
     post,
-    path = "/Home/delete/{ans}",
+    path = "/home/delete/{ans}",
     responses(
         (status = 200, description = "Now he can access your private links"),
     ),
@@ -244,7 +244,7 @@ pub async fn access_prv_data(id: Option<Identity>, client: web::Data<Client>, pa
                  ("auth-cookie" = ["read:items", "edit:items"]),
              ),
 )]
-#[post("/Home/delete/{ans}")]
+#[post("/delete/{ans}")]
 pub async fn deleteuser(id: Option<Identity>, client: web::Data<Client>,  path: web::Path<String>)  -> HttpResponse {
     if let Some(_id) = id {
         let user=_id.id().unwrap();

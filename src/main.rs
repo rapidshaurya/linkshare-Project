@@ -1,5 +1,5 @@
-use actix_identity::{IdentityMiddleware};
-use actix_session::{ SessionMiddleware, storage::CookieSessionStore};
+use actix_identity::IdentityMiddleware;
+use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 
 use actix_web::{cookie::Key, middleware::Logger, services, web, App, HttpServer};
 use actix_web_lab::middleware::from_fn;
@@ -18,7 +18,7 @@ async fn main() -> std::io::Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .with_target(false)
         .init();
-    
+
     #[derive(OpenApi)]
     #[openapi(
         paths(
@@ -61,18 +61,22 @@ async fn main() -> std::io::Result<()> {
     let openapi = ApiDoc::openapi();
 
     let listner = Configure::load_env().expect("failed to load env");
-    let client = listner.connect2_mongodb().await.expect("failed to connect with db");
-    let listner=format!("{}:{}",listner.host, listner.port);
-    
+    let client = listner
+        .connect2_mongodb()
+        .await
+        .expect("failed to connect with db");
+    let listner = format!("{}:{}", listner.host, listner.port);
+
     //used for indexing
     create_username_index(&client).await;
     create_username_index_in_data(&client).await;
     create_friendname_index(&client).await;
-    
+
     let secret_key = Key::generate();
     HttpServer::new(move || {
         let session_mw =
-            SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone()).cookie_name("auth-cookie".to_owned())
+            SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone())
+                .cookie_name("auth-cookie".to_owned())
                 // disable secure cookie for local testing
                 .cookie_secure(false)
                 .build();
@@ -81,9 +85,12 @@ async fn main() -> std::io::Result<()> {
             .wrap(session_mw)
             .app_data(web::Data::new(client.clone()))
             .wrap(Logger::default())
-            .wrap(from_fn(middleware_wraper))
+            .service(services![signin, signup, get_data])
+            .service(web::scope("/home")
+            .wrap(
+                from_fn(middleware_wraper)
+            )
             .service(services![
-                signin,
                 add_data,
                 logout,
                 prv_data,
@@ -92,10 +99,8 @@ async fn main() -> std::io::Result<()> {
                 delete_one_doc,
                 delete_all_doc,
                 update_data,
-                signup,
-                get_data,
                 mylinks
-            ])
+            ]))
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-doc/openapi.json", openapi.clone()),
             )

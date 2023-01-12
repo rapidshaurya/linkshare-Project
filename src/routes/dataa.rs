@@ -28,7 +28,7 @@ const COLL_NAME: &str = "link";
     ),
 )]
 #[instrument(name = "Add new link", skip_all)]
-#[post("/home/add")]
+#[post("/add")]
 pub async fn add_data(
     _id: Option<Identity>,
     client: web::Data<Client>,
@@ -100,7 +100,7 @@ pub async fn add_data(
     
 )]
 // Delete all the doc which is stored by user in "link" collection
-#[post("/home/deletealldoc")]
+#[post("/deletealldoc")]
 pub async fn delete_all_doc(_id: Option<Identity>, client: web::Data<Client>) -> HttpResponse {
     if let Some(id) = _id {
         let username=id.id().unwrap();
@@ -125,7 +125,7 @@ pub async fn delete_all_doc(_id: Option<Identity>, client: web::Data<Client>) ->
     
 )]
 // Delete only one doc which is stored by user in "link" collection on the basis of username, description, and content type
-#[post("/home/delete_one_doc/{objid}")]
+#[post("/delete_one_doc/{objid}")]
 pub async fn delete_one_doc(
     _id: Option<Identity>,
     client: web::Data<Client>,
@@ -169,7 +169,7 @@ pub async fn delete_one_doc(
     
 )]
 
-#[post("/home/update/{obj_id}")]
+#[post("/update/{obj_id}")]
 pub async fn update_data(
     _id: Option<Identity>,
     client: web::Data<Client>,
@@ -251,7 +251,7 @@ pub async fn get_data(client: web::Data<Client>, username: web::Path<String>) ->
     ),    
 )]
 //display all the doc of user in "link" collection if the doc visbility is true(i.e., doc is public).
-#[get("/home/mylinks")]
+#[get("/mylinks")]
 pub async fn mylinks(_id: Option<Identity>, client: web::Data<Client>) -> HttpResponse {
     if let Some(user) = _id {
         let username=user.id().unwrap();
