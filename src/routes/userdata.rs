@@ -1,21 +1,30 @@
 use actix_web::{get, post, web, HttpResponse, http::StatusCode ,HttpRequest, HttpMessage};
 use mongodb::{bson::{doc, Document}, options::IndexOptions, Client, Collection, IndexModel};
 use base64::encode;
+
 use actix_identity::Identity;
-use chrono::prelude::*;
 use tracing::warn;
 use validator::{Validate};
 use std::process;
 use futures::StreamExt;
 use tracing::instrument;
-use crate::{Error,ErrorType};
+use crate::{Error,ErrorType, FetchOnePersons};
 use crate::routes::utils::*;
+
+use data_encoding::HEXUPPER;
+use ring::rand::SecureRandom;
+use ring::{digest, pbkdf2, rand};
+use std::num::NonZeroU32;
+
+
+use crate::{AppState, DbActor, CreatePerson};
+use actix::Addr;
 //name of some collection and database
 const DB_NAME: &str = "linkshare";
 const COLL_NAME1: &str = "user";
 const COLL_NAME2: &str = "access";
 const COLL_NAME3: &str = "link";
-
+const CREDENTIAL_LEN: usize = digest::SHA512_OUTPUT_LEN;
 // using User struct to store user data in "user" collection
 
 
@@ -31,7 +40,8 @@ const COLL_NAME3: &str = "link";
 )]
 #[instrument(name = "signup", skip_all)]
 #[post("/signup")]
-pub async fn signup(client: web::Data<Client>, mut form: web::Json<User>) -> Result<HttpResponse, Error>  {
+pub async fn signup(state: web::Data<AppState>, mut form: web::Json<User>) -> Result<HttpResponse, Error>  {
+    let db:Addr<DbActor>=state.as_ref().db.clone();  
     let a=form.validate();
     match a {
         Ok(())=>(),
@@ -44,21 +54,22 @@ pub async fn signup(client: web::Data<Client>, mut form: web::Json<User>) -> Res
             let error =Error::new(ErrorType::BADREQUEST("ValidationError"));
             return Err(error)}
     }
-    let when =  Utc::now().to_string();
     form.password=encode(&form.password);
-    let doc = doc! {
-        "first_name": &form.first_name,
-        "last_name": &form.last_name,
-        "username": &form.username,
-        "password": &form.password,
-        "when" : when
-    };
-    let collection = client.database(DB_NAME).collection(COLL_NAME1);
-    let result = collection.insert_one(doc, None).await;
-    match result {
-        Ok(_) => Ok(HttpResponse::Created().body("Welcome to linkshare\n go to signin page")),
-        Err(err) => Ok(HttpResponse::Conflict().body(err.to_string())),
-    }
+    match db.send(CreatePerson{
+        id:uuid::Uuid::new_v4(),
+        username:form.username.clone(),
+        password:form.password.clone()
+      }).await
+      {
+          Ok(Ok(_info)) => Ok(HttpResponse::Ok().finish()),
+          Ok(Err(e)) => {
+            tracing::warn!("{}",e);
+            Err(Error::new(ErrorType::BADREQUEST("User Already exisit")))
+          },
+            _ => {
+                let error=Error::new(ErrorType::InternalServerError("Unable to retrieve users data"));
+                return Err(error);},
+      }
 }
 
 #[utoipa::path(
@@ -74,25 +85,61 @@ pub async fn signup(client: web::Data<Client>, mut form: web::Json<User>) -> Res
     request_body = LoginCred
 )]
 #[post("/signin")]
-pub async  fn signin(client: web::Data<Client>, form: web::Json<LoginCred>, request: HttpRequest) -> HttpResponse {
+pub async  fn signin(state: web::Data<AppState>, form: web::Json<LoginCred>, request: HttpRequest) -> Result<HttpResponse, Error> {
+    let n_iter = NonZeroU32::new(100_000).unwrap();
+    let rng = rand::SystemRandom::new();
+
+    let mut salt = [0u8; CREDENTIAL_LEN];
+    rng.fill(&mut salt).unwrap();
+
+    
+    let password = "Guess Me If You Can!";
+    let mut pbkdf2_hash = [0u8; CREDENTIAL_LEN];
+    pbkdf2::derive(
+        pbkdf2::PBKDF2_HMAC_SHA512,
+        n_iter,
+        &salt,
+        password.as_bytes(),
+        &mut pbkdf2_hash,
+    );
+    println!("Salt: {}", HEXUPPER.encode(&salt));
+    println!("PBKDF2 hash: {}", HEXUPPER.encode(&pbkdf2_hash));
+
+    let should_succeed = pbkdf2::verify(
+        pbkdf2::PBKDF2_HMAC_SHA512,
+        n_iter,
+        &salt,
+        password.as_bytes(),
+        &pbkdf2_hash,
+    ).is_ok();
+    if should_succeed{
+        dbg!("success");
+    }else{
+        dbg!("false");
+    }
+
     let username = form.username.to_string();
     let password = encode(form.password.to_string()); // encode function is used to encode password
 
-    let collection: Collection<User> = client.database(DB_NAME).collection(COLL_NAME1);
-    let ans = collection
-        .find_one(doc! { "username": &username, "password":&password}, None)
-        .await;
-    match ans
-    {
-        Ok(Some(_user)) =>  { 
+    let db: Addr<DbActor> = state.as_ref().db.clone();
+
+  match db.send(FetchOnePersons{
+    username:username.clone()
+  }).await
+  {
+      Ok(Ok(info)) => {
+        if password.clone().eq(&info.password.clone()){
             Identity::login(&request.extensions(), username.to_owned()).unwrap();
-            HttpResponse::Ok().body(format!("Welcome {}", username)) 
-        } 
-        Ok(None) => {
-            HttpResponse::Unauthorized().body(format!("Invalid username or password"))
+            return Ok(HttpResponse::Ok().finish());
+        }else {
+            Err(Error::new(ErrorType::UNAUTHORIZED("Invalid user id or password")))
         }
-        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-    }
+    },
+      Ok(Err(e)) => {
+        {tracing::warn!("{}",e);
+        return Err(Error::new(ErrorType::UNAUTHORIZED("Invalid user id or password")))}},
+        _ => Ok(HttpResponse::InternalServerError().json("Unable to retrieve users")),
+  }
 }
 
 // this route handles the logout part of my project
